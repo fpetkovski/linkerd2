@@ -3,6 +3,7 @@ package destination
 import (
 	"encoding/json"
 	"fmt"
+	coreinformers "k8s.io/client-go/informers/core/v1"
 	"net"
 	"strconv"
 	"strings"
@@ -24,6 +25,7 @@ type (
 		profiles      *watcher.ProfileWatcher
 		trafficSplits *watcher.TrafficSplitWatcher
 		ips           *watcher.IPWatcher
+		nodes         coreinformers.NodeInformer
 
 		enableH2Upgrade     bool
 		controllerNS        string
@@ -72,6 +74,7 @@ func NewServer(
 		profiles,
 		trafficSplits,
 		ips,
+		k8sAPI.Node(),
 		enableH2Upgrade,
 		controllerNS,
 		identityTrustDomain,
@@ -108,7 +111,7 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 		s.enableH2Upgrade,
 		dest.GetPath(),
 		token.NodeName,
-		s.k8sAPI.Client,
+		s.nodes,
 		stream,
 		log,
 	)

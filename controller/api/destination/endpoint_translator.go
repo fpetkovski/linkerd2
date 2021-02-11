@@ -3,7 +3,6 @@ package destination
 import (
 	"context"
 	"fmt"
-
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2-proxy-api/go/net"
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
@@ -11,8 +10,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	logging "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
+	coreinformers "k8s.io/client-go/informers/core/v1"
 )
 
 const defaultWeight uint32 = 10000
@@ -38,7 +36,7 @@ func newEndpointTranslator(
 	enableH2Upgrade bool,
 	service string,
 	srcNodeName string,
-	k8sClient kubernetes.Interface,
+	nodes coreinformers.NodeInformer,
 	stream pb.Destination_GetServer,
 	log *logging.Entry,
 ) *endpointTranslator {
@@ -47,7 +45,7 @@ func newEndpointTranslator(
 		"service":   service,
 	})
 
-	nodeTopologyLabels, err := getK8sNodeTopology(ctx, k8sClient, srcNodeName)
+	nodeTopologyLabels, err := getK8sNodeTopology(ctx, nodes, srcNodeName)
 	if err != nil {
 		log.Errorf("Failed to get node topology for node %s: %s", srcNodeName, err)
 	}
@@ -349,9 +347,9 @@ func toWeightedAddr(address watcher.Address, enableH2Upgrade bool, identityTrust
 	}, nil
 }
 
-func getK8sNodeTopology(ctx context.Context, k8sClient kubernetes.Interface, srcNode string) (map[string]string, error) {
+func getK8sNodeTopology(ctx context.Context, nodes coreinformers.NodeInformer, srcNode string) (map[string]string, error) {
 	nodeTopology := make(map[string]string)
-	node, err := k8sClient.CoreV1().Nodes().Get(ctx, srcNode, metav1.GetOptions{})
+	node, err := nodes.Lister().Get(srcNode)
 	if err != nil {
 		return nodeTopology, err
 	}
